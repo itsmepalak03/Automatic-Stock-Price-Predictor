@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}404 — Not Found{% endblock %}
+{% block body %}
+<div class="page-wrap" style="display:flex;align-items:center;justify-content:center;min-height:80vh">
+  <div style="text-align:center;padding:40px">
+    <div style="font-family:var(--font-d);font-size:7rem;font-weight:800;color:var(--border2);line-height:1;margin-bottom:16px">404</div>
+    <h1 style="font-family:var(--font-d);font-size:1.6rem;font-weight:700;color:var(--text);margin-bottom:10px">Page Not Found</h1>
+    <p style="color:var(--text2);font-size:0.9rem;margin-bottom:28px">The stock or page you're looking for doesn't exist.</p>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+      <a href="/" class="btn btn-gold">Go Home</a>
+      <a href="/stocks" class="btn btn-ghost">Browse Stocks</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
