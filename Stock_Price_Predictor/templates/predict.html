@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+{% block title %}Prediction — {{ symbol.replace('.NS','') }}{% endblock %}
+{% block body %}
+<div class="page-wrap fade-in">
+<div class="container" style="padding-top:28px">
+
+  <div style="margin-bottom:24px">
+    <div class="page-label">AI Forecasting Engine</div>
+    <h1 class="page-title">10-Day Stock Price Prediction</h1>
+    <p class="page-sub">Machine Learning model with Linear Regression · Technical Indicators · Confidence Bands</p>
+  </div>
+
+  <!-- STOCK SELECTOR -->
+  <div class="card" style="margin-bottom:24px">
+    <div class="card-title">Select Stock to Predict</div>
+    <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+      <div class="pill-row" id="idxFilter">
+        <button class="pill active" onclick="filterPredIdx('all',this)">All</button>
+        <button class="pill" onclick="filterPredIdx('Nifty 50',this)">Nifty 50</button>
+        <button class="pill" onclick="filterPredIdx('Nifty Bank',this)">Nifty Bank</button>
+        <button class="pill" onclick="filterPredIdx('Nifty Next 50',this)">Nifty Next 50</button>
+      </div>
+      <div class="nav-search" style="flex:1;min-width:200px;max-width:280px;position:relative">
+        <svg style="position:absolute;left:10px;color:var(--text3);width:14px;height:14px;z-index:1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="stockSearch" class="form-input" placeholder="Search symbol..." oninput="filterPredSearch(this.value)" style="padding-left:32px">
+      </div>
+    </div>
+    <div id="stockGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;max-height:200px;overflow-y:auto;margin-top:14px;padding:2px"></div>
+  </div>
+
+  <!-- PREDICTION LOADING -->
+  <div id="predLoading" style="display:none" class="loading"><div class="spinner"></div> Running ML prediction model...</div>
+
+  <!-- PREDICTION OUTPUT -->
+  <div id="predOutput" style="display:none">
+    <!-- Header -->
+    <div class="card" style="margin-bottom:18px" id="predHeader"></div>
+
+    <!-- Prediction Chart (main) -->
+    <div class="chart-wrap" style="margin-bottom:18px">
+      <div class="chart-title">Price History + 10-Day ML Forecast + Confidence Band + SMA Overlays</div>
+      <div id="mainPredChart" style="height:420px"></div>
+    </div>
+
+    <!-- RSI + MACD side by side -->
+    <div class="grid-2" style="margin-bottom:18px">
+      <div class="chart-wrap">
+        <div class="chart-title">RSI (14) — Technical Indicator</div>
+        <div id="predRsiChart" style="height:240px"></div>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-title">Volume History (Last 60 Days)</div>
+        <div id="predVolChart" style="height:240px"></div>
+      </div>
+    </div>
+
+    <!-- Forecast Table -->
+    <div class="card" style="margin-bottom:18px">
+      <div class="card-title">10-Day Forecast Table</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>Day</th>
+            <th>Date</th>
+            <th>ML Prediction (₹)</th>
+            <th>Upper Band (₹)</th>
+            <th>Lower Band (₹)</th>
+            <th>vs Current</th>
+            <th>Signal</th>
+          </tr></thead>
+          <tbody id="predTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="disclaimer">
+      <strong>⚠ Disclaimer:</strong> Predictions are AI-generated estimates using Linear Regression on technical indicators. For educational purposes only — NOT financial advice. Always consult a SEBI-registered advisor before investing.
+    </div>
+  </div>
+
+  <!-- PLACEHOLDER -->
+  <div id="predPlaceholder" style="text-align:center;padding:80px 20px;color:var(--text2)">
+    <div style="font-size:4rem;margin-bottom:18px;opacity:0.3">📈</div>
+    <div style="font-size:1.1rem;font-weight:600;color:var(--text);margin-bottom:8px">Select a stock above to run prediction</div>
+    <div style="font-size:0.85rem">Our ML model will forecast the next 10 trading days</div>
+  </div>
+
+</div>
+<footer>
+  <div><span class="footer-brand">ASPP Pro</span> · Prediction Engine</div>
+  <div style="font-size:0.72rem;color:var(--text3)">For educational purposes only.</div>
+</footer>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const NSE_STOCKS = {{ nse_stocks | tojson }};
+let currentIdx = 'all', currentSearch = '';
+
+function renderGrid(){
+  const grid = document.getElementById('stockGrid');
+  let stocks = Object.entries(NSE_STOCKS);
+  if(currentIdx !== 'all') stocks = stocks.filter(([s,i])=>i.index===currentIdx);
+  if(currentSearch) stocks = stocks.filter(([s,i])=>s.toLowerCase().includes(currentSearch)||i.name.toLowerCase().includes(currentSearch));
+  grid.innerHTML = stocks.map(([sym,info])=>`
+    <div onclick="runPrediction('${sym}')"
+      style="padding:8px 10px;background:var(--card);border:1px solid var(--border);border-radius:7px;cursor:pointer;font-size:0.72rem;font-weight:700;text-align:center;transition:all 0.15s"
+      onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'"
+      onmouseout="this.style.borderColor='var(--border)';this.style.color=''">
+      ${sym.replace('.NS','')}
+    </div>`).join('');
+}
+
+function filterPredIdx(idx, el){
+  currentIdx=idx;
+  document.querySelectorAll('#idxFilter .pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  renderGrid();
+}
+function filterPredSearch(v){ currentSearch=v.toLowerCase(); renderGrid(); }
+
+function runPrediction(sym){
+  document.getElementById('predPlaceholder').style.display='none';
+  document.getElementById('predOutput').style.display='none';
+  document.getElementById('predLoading').style.display='flex';
+  window.scrollTo({top:document.getElementById('predLoading').offsetTop-80,behavior:'smooth'});
+
+  fetch(`/api/predict/${sym}?days=10`).then(r=>r.json()).then(d=>{
+    document.getElementById('predLoading').style.display='none';
+    renderPrediction(sym, d);
+  }).catch(()=>{
+    document.getElementById('predLoading').style.display='none';
+    showToast('Error loading prediction','err');
+  });
+}
+
+function renderPrediction(sym, d){
+  const info = NSE_STOCKS[sym]||{};
+  const up = d.future_prices[d.future_prices.length-1] >= d.current_price;
+  const scls = signalClass(d.overall_signal);
+
+  document.getElementById('predHeader').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px">
+      <div>
+        <h2 style="font-family:var(--font-d);font-size:1.8rem;font-weight:800;letter-spacing:-0.5px">${sym.replace('.NS','')}</h2>
+        <div style="font-size:0.8rem;color:var(--text2);margin-top:4px">${info.name||''} · ${info.index||''} · ${info.sector||''}</div>
+      </div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start">
+        <div style="text-align:right">
+          <div style="font-family:var(--font-m);font-size:2rem;font-weight:600;color:var(--gold)">₹${fmtINR(d.current_price)}</div>
+          <div style="font-size:0.72rem;color:var(--text2)">Current Price</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:var(--font-m);font-size:2rem;font-weight:600;color:${up?'var(--green)':'var(--red)'}">₹${fmtINR(d.target_price)}</div>
+          <div style="font-size:0.72rem;color:var(--text2)">10-Day Target</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:var(--font-m);font-size:1.4rem;font-weight:600;color:${d.upside_pct>=0?'var(--green)':'var(--red)'}">${d.upside_pct>=0?'+':''}${d.upside_pct}%</div>
+          <div style="font-size:0.72rem;color:var(--text2)">Expected Move</div>
+        </div>
+        <div style="text-align:center;padding:12px 18px;background:var(--bg3);border:1px solid var(--border);border-radius:10px">
+          <span class="${scls}" style="font-size:0.9rem;padding:6px 14px">${d.overall_signal}</span>
+          <div style="font-size:0.68rem;color:var(--text2);margin-top:5px">Overall Signal</div>
+        </div>
+      </div>
+    </div>`;
+
+  // Main chart: history + prediction + bands
+  const hLen = d.hist_dates.length;
+  const fLen = d.future_dates.length;
+  const allDates = [...d.hist_dates, ...d.future_dates];
+  const histFull = [...d.hist_close, ...Array(fLen).fill(null)];
+  const predFull = [...Array(hLen).fill(null), ...d.future_prices];
+  const upFull   = [...Array(hLen).fill(null), ...d.upper_band];
+  const dnFull   = [...Array(hLen).fill(null), ...d.lower_band];
+  const insFull  = [...d.in_sample_prices, ...Array(fLen).fill(null)];
+
+  Plotly.newPlot('mainPredChart',[
+    {x:allDates,y:upFull,mode:'lines',name:'Upper Band',line:{color:'rgba(59,130,246,0.3)',width:1},fill:'tonexty',fillcolor:'rgba(59,130,246,0.07)',showlegend:false},
+    {x:allDates,y:predFull,mode:'lines+markers',name:'ML Forecast',
+      line:{color:'#3b82f6',width:2.5},marker:{size:5,color:'#60a5fa'},
+      hovertemplate:'<b>%{x}</b><br>Forecast: ₹%{y:,.2f}<extra></extra>'},
+    {x:allDates,y:dnFull,mode:'lines',name:'Lower Band',line:{color:'rgba(59,130,246,0.3)',width:1},fill:'tozeroy',fillcolor:'rgba(0,0,0,0)',showlegend:false},
+    {x:allDates,y:histFull,mode:'lines',name:'Historical Price',line:{color:'#94a3b8',width:1.5}},
+    {x:d.in_sample_dates,y:d.in_sample_prices,mode:'lines',name:'Model Fit',line:{color:'#f0b429',width:1,dash:'dot'}},
+    {x:d.hist_dates,y:d.hist_sma5,mode:'lines',name:'SMA-5',line:{color:'#06b6d4',width:1.2,dash:'dot'}},
+    {x:d.hist_dates,y:d.hist_sma20,mode:'lines',name:'SMA-20',line:{color:'#a855f7',width:1.2,dash:'dot'}},
+    {x:[d.hist_dates[d.hist_dates.length-1],d.future_dates[0]],y:[d.hist_close[d.hist_close.length-1],d.future_prices[0]],
+     mode:'lines',showlegend:false,line:{color:'rgba(240,180,41,0.3)',width:1,dash:'dot'}},
+  ],{...PL_LAYOUT,
+    shapes:[{type:'line',x0:d.hist_dates[d.hist_dates.length-1],x1:d.hist_dates[d.hist_dates.length-1],
+             y0:0,y1:1,yref:'paper',line:{color:'rgba(240,180,41,0.4)',width:1.5,dash:'dash'}}],
+    annotations:[{x:d.hist_dates[d.hist_dates.length-1],y:1,yref:'paper',text:'Today',showarrow:false,
+                  font:{color:'#f0b429',size:10},xanchor:'right',yanchor:'top'}],
+  },PL_CONFIG);
+
+  // RSI
+  Plotly.newPlot('predRsiChart',[
+    {x:d.hist_dates,y:d.hist_rsi,mode:'lines',name:'RSI(14)',line:{color:'#a855f7',width:2},fill:'tozeroy',fillcolor:'rgba(168,85,247,0.07)'},
+    {x:d.hist_dates,y:Array(d.hist_dates.length).fill(70),mode:'lines',showlegend:false,line:{color:'rgba(239,68,68,0.4)',width:1,dash:'dot'}},
+    {x:d.hist_dates,y:Array(d.hist_dates.length).fill(30),mode:'lines',showlegend:false,line:{color:'rgba(34,197,94,0.4)',width:1,dash:'dot'}},
+  ],{...PL_LAYOUT,yaxis:{...PL_LAYOUT.yaxis,range:[0,100]}},PL_CONFIG);
+
+  // Volume
+  Plotly.newPlot('predVolChart',[{
+    type:'bar',x:d.hist_dates,y:d.hist_volume,name:'Volume',
+    marker:{color:d.hist_close.map((c,i)=>i>0?(c>=d.hist_close[i-1]?'rgba(34,197,94,0.6)':'rgba(239,68,68,0.6)'):'rgba(59,130,246,0.6)')}
+  }],{...PL_LAYOUT},PL_CONFIG);
+
+  // Table
+  const tbody = document.getElementById('predTableBody');
+  tbody.innerHTML = d.future_dates.map((date,i)=>{
+    const ml=d.future_prices[i], sig=d.signals[i];
+    const vsPct=((ml-d.current_price)/d.current_price*100).toFixed(2);
+    return `<tr>
+      <td style="font-weight:700">Day ${i+1}</td>
+      <td class="td-mono">${date}</td>
+      <td class="td-mono" style="font-weight:600;color:${ml>=d.current_price?'var(--green)':'var(--red)'}">₹${fmtINR(ml)}</td>
+      <td class="td-mono" style="color:var(--green)">₹${fmtINR(d.upper_band[i])}</td>
+      <td class="td-mono" style="color:var(--red)">₹${fmtINR(d.lower_band[i])}</td>
+      <td class="td-mono ${vsPct>=0?'up':'dn'}">${vsPct>=0?'+':''}${vsPct}%</td>
+      <td><span class="${signalClass(sig)}">${sig}</span></td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('predOutput').style.display='block';
+}
+
+renderGrid();
+// Auto-run for pre-selected symbol
+const AUTO_SYM = "{{ symbol }}";
+if(AUTO_SYM && AUTO_SYM !== 'None') setTimeout(()=>runPrediction(AUTO_SYM), 200);
+</script>
+{% endblock %}

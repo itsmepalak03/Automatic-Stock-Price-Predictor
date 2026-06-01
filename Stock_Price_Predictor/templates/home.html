@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+{% block body %}
+<div class="page-wrap fade-in">
+
+<!-- HERO -->
+<section style="position:relative;padding:72px 28px 60px;max-width:1380px;margin:0 auto;overflow:hidden">
+  <div style="position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 30% 50%,rgba(59,130,246,0.07) 0,transparent 60%),radial-gradient(ellipse 50% 50% at 80% 20%,rgba(240,180,41,0.05) 0,transparent 60%);pointer-events:none"></div>
+  <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(31,45,66,0.3) 1px,transparent 1px),linear-gradient(90deg,rgba(31,45,66,0.3) 1px,transparent 1px);background-size:44px 44px;opacity:0.4;pointer-events:none"></div>
+
+  <div style="max-width:720px;position:relative">
+    <div style="display:inline-flex;align-items:center;gap:8px;padding:5px 14px;border-radius:20px;border:1px solid rgba(240,180,41,0.3);background:rgba(240,180,41,0.07);font-size:0.7rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin-bottom:22px">
+      <span class="live-dot"></span>Live NSE Data · AI Price Prediction
+    </div>
+    <h1 style="font-family:var(--font-d);font-size:clamp(2.4rem,5vw,4rem);font-weight:800;line-height:1.05;letter-spacing:-1.5px;margin-bottom:20px">
+      India's Smartest<br><span style="color:var(--gold)">Stock Price</span><br><span style="background:linear-gradient(135deg,var(--blue2),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Predictor</span>
+    </h1>
+    <p style="font-size:1rem;color:var(--text2);line-height:1.75;max-width:520px;margin-bottom:32px;font-weight:300">
+      Real-time NSE stock data, 10-day ML price forecasts, candlestick charts, portfolio tracking, and advanced analytics — all in one professional platform.
+    </p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:48px">
+      <a href="/predict" class="btn btn-gold btn-lg">⚡ Start Predicting</a>
+      <a href="/dashboard" class="btn btn-ghost btn-lg">View Dashboard →</a>
+    </div>
+    <div style="display:flex;gap:28px;flex-wrap:wrap;font-size:0.82rem;color:var(--text2)">
+      <span><span style="color:var(--green);font-weight:600">{{ total_stocks }}</span> Live Stocks</span>
+      <span><span style="color:var(--blue2);font-weight:600">3</span> Major Indices</span>
+      <span><span style="color:var(--gold);font-weight:600">10-Day</span> AI Forecast</span>
+      <span><span style="color:var(--cyan);font-weight:600">Candlestick</span> Charts</span>
+    </div>
+  </div>
+</section>
+
+<!-- INDEX CARDS -->
+<div class="container">
+  <div class="stat-grid" style="margin-bottom:36px">
+    {% for idx, data in indices.items() %}
+    {% set up = data.change >= 0 %}
+    <div class="stat-tile {{ 'green' if up else 'red' }}">
+      <div class="st-label">{{ idx }}</div>
+      <div class="st-value" style="font-size:1.3rem;color:{{ 'var(--green)' if up else 'var(--red)' }}">{{ "{:,.2f}".format(data.value) }}</div>
+      <div class="st-sub" style="color:{{ 'var(--green)' if up else 'var(--red)' }}">{{ '+' if up else '' }}{{ data.change }}%</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- TOP MOVERS -->
+  <div class="grid-2" style="margin-bottom:36px">
+    <div class="card">
+      <div class="card-title" style="color:var(--green)">🚀 Top Gainers Today</div>
+      {% for q in gainers %}
+      <a href="/stock/{{ q.symbol }}" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);text-decoration:none">
+        <div>
+          <div style="font-weight:700;font-size:0.88rem">{{ q.symbol.replace('.NS','') }}</div>
+          <div style="font-size:0.72rem;color:var(--text2)">{{ q.name[:28] }}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:var(--font-m);font-size:0.85rem;font-weight:600">₹{{ fmtINR(q.price) }}</div>
+          <span class="badge badge-up">▲ +{{ q.pct_change }}%</span>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    <div class="card">
+      <div class="card-title" style="color:var(--red)">🔻 Top Losers Today</div>
+      {% for q in losers %}
+      <a href="/stock/{{ q.symbol }}" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);text-decoration:none">
+        <div>
+          <div style="font-weight:700;font-size:0.88rem">{{ q.symbol.replace('.NS','') }}</div>
+          <div style="font-size:0.72rem;color:var(--text2)">{{ q.name[:28] }}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:var(--font-m);font-size:0.85rem;font-weight:600">₹{{ fmtINR(q.price) }}</div>
+          <span class="badge badge-dn">▼ {{ q.pct_change }}%</span>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- FEATURED STOCKS -->
+  <div style="margin-bottom:12px"><div class="sec-label">Featured Stocks</div></div>
+  <div class="grid-4" style="margin-bottom:36px">
+    {% for q in featured %}
+    {% set up = q.pct_change >= 0 %}
+    <a href="/stock/{{ q.symbol }}" class="card card-hover" style="text-decoration:none">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+        <div>
+          <div style="font-weight:700;font-size:0.95rem">{{ q.symbol.replace('.NS','') }}</div>
+          <div style="font-size:0.7rem;color:var(--text2)">{{ q.sector }}</div>
+        </div>
+        <span class="badge {{ 'badge-up' if up else 'badge-dn' }}">{{ '+' if up else '' }}{{ q.pct_change }}%</span>
+      </div>
+      <div style="font-family:var(--font-m);font-size:1.4rem;font-weight:600;color:{{ 'var(--green)' if up else 'var(--red)' }};margin-bottom:4px">₹{{ fmtINR(q.price) }}</div>
+      <div style="font-size:0.72rem;color:var(--text2)">Vol: {{ fmtVol(q.volume) }}</div>
+    </a>
+    {% endfor %}
+  </div>
+
+  <!-- MARKET INDICES CHART -->
+  <div class="card" style="margin-bottom:36px">
+    <div class="card-title">Live Index Overview</div>
+    <div id="idxChart" style="height:260px"></div>
+  </div>
+
+  <!-- WHY ASPP -->
+  <div class="sec-label" style="margin-bottom:12px">Why ASPP Pro</div>
+  <div class="grid-3" style="margin-bottom:48px">
+    {% for icon, title, desc in [
+      ('📈','Candlestick Charts','Full OHLC candlestick charts with red/green candles, volume bars, Bollinger Bands, and moving averages powered by Plotly.'),
+      ('🤖','ML Price Prediction','10-day ahead price forecasts using Linear Regression with technical indicator features — RSI, MACD, SMA, EMA.'),
+      ('⚡','Real-Time Data','Live price updates every 30 seconds with % change, volume, 52-week range, and sector-level performance heatmaps.'),
+      ('🔍','Stock Compare','Compare 2–4 stocks side-by-side with normalised performance charts, metrics, and trend analysis.'),
+      ('💼','Portfolio Tracker','Track your holdings, P&L, return %, sector allocation, and portfolio value in one dashboard.'),
+      ('⭐','Smart Watchlist','Save favourite stocks, monitor them live, and get quick access to predictions and charts.')
+    ] %}
+    <div class="card card-hover">
+      <div style="font-size:1.8rem;margin-bottom:12px">{{ icon }}</div>
+      <div style="font-weight:700;font-size:0.92rem;margin-bottom:7px">{{ title }}</div>
+      <div style="font-size:0.8rem;color:var(--text2);line-height:1.65">{{ desc }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="disclaimer">
+    <strong>⚠ Educational Disclaimer:</strong> All data, predictions, and signals are for educational and research purposes only. This is not financial advice. Always consult a SEBI-registered financial advisor before investing.
+  </div>
+</div>
+<footer>
+  <div><span class="footer-brand">ASPP Pro</span> · Automatic Stock Price Predictor · © 2026</div>
+  <div style="font-size:0.72rem;color:var(--text3)">For educational purposes only. Not financial advice.</div>
+</footer>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const idxData = {{ indices | tojson }};
+const names = Object.keys(idxData);
+const vals  = names.map(k=>idxData[k].value);
+const chgs  = names.map(k=>idxData[k].change);
+const colors= chgs.map(c=>c>=0?'rgba(34,197,94,0.8)':'rgba(239,68,68,0.8)');
+Plotly.newPlot('idxChart',[{
+  type:'bar', x:names, y:vals,
+  marker:{color:colors, line:{color:chgs.map(c=>c>=0?'#22c55e':'#ef4444'),width:2}},
+  text:chgs.map(c=>(c>=0?'+':'')+c+'%'), textposition:'outside',
+  textfont:{color:chgs.map(c=>c>=0?'#22c55e':'#ef4444'),size:11},
+  hovertemplate:'<b>%{x}</b><br>Value: %{y:,.2f}<br>Change: %{text}<extra></extra>',
+}],{...PL_LAYOUT,yaxis:{...PL_LAYOUT.yaxis,title:{text:'Index Value',font:{size:11,color:'#64748b'}}}},PL_CONFIG);
+</script>
+{% endblock %}

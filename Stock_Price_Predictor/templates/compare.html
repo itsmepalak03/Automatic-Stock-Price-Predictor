@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Compare Stocks{% endblock %}
+{% block body %}
+<div class="page-wrap fade-in">
+<div class="container" style="padding-top:28px">
+  <div style="margin-bottom:24px">
+    <div class="page-label">Analysis</div>
+    <h1 class="page-title">Compare Stocks</h1>
+    <p class="page-sub">Side-by-side performance comparison of up to 4 stocks</p>
+  </div>
+
+  <!-- SELECTOR -->
+  <div class="card" style="margin-bottom:24px">
+    <div class="card-title">Select Stocks to Compare</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      {% for i in range(4) %}
+      <select id="sel{{ i }}" class="form-select" style="width:180px" onchange="updateURL()">
+        <option value="">— Stock {{ i+1 }} —</option>
+        {% for sym in all_symbols %}
+        <option value="{{ sym }}" {{ 'selected' if loop.index0 < symbols|length and symbols[loop.index0] == sym else '' }}>{{ sym.replace('.NS','') }}</option>
+        {% endfor %}
+      </select>
+      {% endfor %}
+      <button class="btn btn-gold" onclick="loadCompare()">Compare ⚡</button>
+    </div>
+  </div>
+
+  <div id="compareLoading" style="display:none" class="loading"><div class="spinner"></div> Loading comparison data...</div>
+
+  <!-- CHARTS -->
+  <div id="compareOutput" style="display:none">
+    <div class="chart-wrap" style="margin-bottom:18px">
+      <div class="chart-title">Normalised Performance (% from Start)</div>
+      <div id="perfChart" style="height:360px"></div>
+    </div>
+    <div class="grid-2" style="margin-bottom:18px">
+      <div class="chart-wrap">
+        <div class="chart-title">Absolute Closing Price (₹)</div>
+        <div id="priceChart" style="height:280px"></div>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-title">Price Distribution (Box Plot)</div>
+        <div id="boxChart" style="height:280px"></div>
+      </div>
+    </div>
+    <!-- Metrics table -->
+    <div class="card">
+      <div class="card-title">Side-by-Side Metrics</div>
+      <div id="metricsTable"></div>
+    </div>
+  </div>
+</div>
+<footer><div><span class="footer-brand">ASPP Pro</span> · Compare</div></footer>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const ALL_SYMS = {{ all_symbols | tojson }};
+const COLORS = ['#3b82f6','#f0b429','#22c55e','#a855f7'];
+
+function updateURL(){
+  const syms=[];
+  for(let i=0;i<4;i++){const v=document.getElementById('sel'+i).value;if(v)syms.push(v);}
+  const url=new URL(window.location);url.search='';syms.forEach(s=>url.searchParams.append('s',s));
+  window.history.replaceState({},'',url);
+}
+
+function loadCompare(){
+  const syms=[];
+  for(let i=0;i<4;i++){const v=document.getElementById('sel'+i).value;if(v)syms.push(v);}
+  if(syms.length<2){showToast('Select at least 2 stocks','err');return;}
+  document.getElementById('compareLoading').style.display='flex';
+  document.getElementById('compareOutput').style.display='none';
+  fetch('/api/compare?'+syms.map(s=>'s='+s).join('&')).then(r=>r.json()).then(d=>{
+    document.getElementById('compareLoading').style.display='none';
+    renderCompare(d);
+  });
+}
+
+function renderCompare(d){
+  const syms=Object.keys(d);
+  // Perf chart (% change from day 0)
+  const perfTraces=syms.map((s,i)=>({
+    x:d[s].dates,y:d[s].pct,mode:'lines',name:s.replace('.NS',''),
+    line:{color:COLORS[i],width:2.5}
+  }));
+  Plotly.newPlot('perfChart',perfTraces,{...PL_LAYOUT,
+    yaxis:{...PL_LAYOUT.yaxis,title:{text:'% Change',font:{size:11,color:'#64748b'}},zeroline:true,zerolinecolor:'rgba(240,180,41,0.3)'}
+  },PL_CONFIG);
+
+  // Price chart
+  const priceTraces=syms.map((s,i)=>({
+    x:d[s].dates,y:d[s].close,mode:'lines',name:s.replace('.NS',''),
+    line:{color:COLORS[i],width:2}
+  }));
+  Plotly.newPlot('priceChart',priceTraces,{...PL_LAYOUT},PL_CONFIG);
+
+  // Box
+  const boxTraces=syms.map((s,i)=>({
+    type:'box',y:d[s].close,name:s.replace('.NS',''),
+    marker:{color:COLORS[i]},line:{color:COLORS[i]}
+  }));
+  Plotly.newPlot('boxChart',boxTraces,{...PL_LAYOUT},PL_CONFIG);
+
+  // Metrics table
+  const header='<tr><th>Metric</th>'+syms.map((s,i)=>`<th style="color:${COLORS[i]}">${s.replace('.NS','')}</th>`).join('')+'</tr>';
+  const metrics=[
+    ['Stock Name',   syms.map(s=>d[s].name)],
+    ['Current Price',syms.map(s=>'₹'+fmtINR(d[s].close[d[s].close.length-1]))],
+    ['Period Return', syms.map(s=>{const v=d[s].pct[d[s].pct.length-1];return`<span class="${v>=0?'up':'dn'}">${v>=0?'+':''}${v.toFixed(2)}%</span>`;})],
+    ['Max Price',    syms.map(s=>'₹'+fmtINR(Math.max(...d[s].close)))],
+    ['Min Price',    syms.map(s=>'₹'+fmtINR(Math.min(...d[s].close)))],
+    ['Avg Price',    syms.map(s=>'₹'+fmtINR(d[s].close.reduce((a,b)=>a+b,0)/d[s].close.length))],
+  ];
+  const rows=metrics.map(([label,vals])=>`<tr><td style="font-weight:600;font-size:0.8rem">${label}</td>${vals.map(v=>`<td class="td-mono">${v}</td>`).join('')}</tr>`).join('');
+  document.getElementById('metricsTable').innerHTML=`<div class="tbl-wrap"><table><thead>${header}</thead><tbody>${rows}</tbody></table></div>`;
+  document.getElementById('compareOutput').style.display='block';
+}
+
+// Pre-populate selectors
+const INIT_SYMS={{ symbols | tojson }};
+INIT_SYMS.forEach((s,i)=>{document.getElementById('sel'+i).value=s;});
+if(INIT_SYMS.length>=2)setTimeout(loadCompare,300);
+</script>
+{% endblock %}

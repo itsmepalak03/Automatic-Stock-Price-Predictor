@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Market News{% endblock %}
+{% block body %}
+<div class="page-wrap fade-in">
+<div class="container" style="padding-top:28px">
+
+  <div style="margin-bottom:28px">
+    <div class="page-label">Market Intelligence</div>
+    <h1 class="page-title">Market News & Updates</h1>
+    <p class="page-sub">Latest financial news from India's leading business publications</p>
+  </div>
+
+  <!-- FILTER PILLS -->
+  <div class="pill-row" style="margin-bottom:24px" id="newsPills">
+    <button class="pill active" onclick="filterNews('all',this)">All</button>
+    <button class="pill" onclick="filterNews('Market',this)">Market</button>
+    <button class="pill" onclick="filterNews('Economy',this)">Economy</button>
+    <button class="pill" onclick="filterNews('Results',this)">Results</button>
+    <button class="pill" onclick="filterNews('Banking',this)">Banking</button>
+    <button class="pill" onclick="filterNews('IT',this)">IT</button>
+    <button class="pill" onclick="filterNews('Pharma',this)">Pharma</button>
+    <button class="pill" onclick="filterNews('Energy',this)">Energy</button>
+  </div>
+
+  <!-- NEWS GRID -->
+  <div id="newsGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px;margin-bottom:36px">
+    {% for item in news %}
+    {% set border = 'var(--green)' if item.sentiment == 'positive' else 'var(--red)' if item.sentiment == 'negative' else 'var(--border2)' %}
+    {% set sent_color = 'var(--green)' if item.sentiment == 'positive' else 'var(--red)' if item.sentiment == 'negative' else 'var(--text2)' %}
+    {% set sent_icon = '▲' if item.sentiment == 'positive' else '▼' if item.sentiment == 'negative' else '—' %}
+    <div class="card card-hover news-card" data-tag="{{ item.tag }}"
+      style="border-left:3px solid {{ border }};cursor:pointer"
+      onclick="this.querySelector('a').click()">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+        <span class="badge badge-gold" style="font-size:0.62rem">{{ item.tag }}</span>
+        <span style="font-size:0.68rem;color:var(--text3)">{{ item.time }}</span>
+      </div>
+      <h3 style="font-size:0.92rem;font-weight:600;line-height:1.5;color:var(--text);margin-bottom:12px">
+        <a href="#" style="color:inherit">{{ item.title }}</a>
+      </h3>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:0.72rem;color:var(--text2)">{{ item.source }}</span>
+        <span style="font-size:0.72rem;color:{{ sent_color }};font-weight:600">{{ sent_icon }} {{ item.sentiment.capitalize() }}</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- MARKET SENTIMENT SUMMARY -->
+  <div class="card" style="margin-bottom:24px">
+    <div class="card-title">Today's Sentiment Summary</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px">
+      {% set pos = news | selectattr('sentiment','equalto','positive') | list | length %}
+      {% set neg = news | selectattr('sentiment','equalto','negative') | list | length %}
+      {% set neu = news | length - pos - neg %}
+      <div style="text-align:center;padding:16px;background:var(--bg3);border-radius:8px">
+        <div style="font-family:var(--font-d);font-size:2rem;font-weight:700;color:var(--green)">{{ pos }}</div>
+        <div style="font-size:0.72rem;color:var(--text2);margin-top:4px;text-transform:uppercase;letter-spacing:0.8px">Positive</div>
+      </div>
+      <div style="text-align:center;padding:16px;background:var(--bg3);border-radius:8px">
+        <div style="font-family:var(--font-d);font-size:2rem;font-weight:700;color:var(--red)">{{ neg }}</div>
+        <div style="font-size:0.72rem;color:var(--text2);margin-top:4px;text-transform:uppercase;letter-spacing:0.8px">Negative</div>
+      </div>
+      <div style="text-align:center;padding:16px;background:var(--bg3);border-radius:8px">
+        <div style="font-family:var(--font-d);font-size:2rem;font-weight:700;color:var(--text2)">{{ neu }}</div>
+        <div style="font-size:0.72rem;color:var(--text2);margin-top:4px;text-transform:uppercase;letter-spacing:0.8px">Neutral</div>
+      </div>
+      <div style="text-align:center;padding:16px;background:var(--bg3);border-radius:8px">
+        <div style="font-family:var(--font-d);font-size:2rem;font-weight:700;color:var(--gold)">{{ news|length }}</div>
+        <div style="font-size:0.72rem;color:var(--text2);margin-top:4px;text-transform:uppercase;letter-spacing:0.8px">Total Articles</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="disclaimer">
+    <strong>📰 Note:</strong> News items shown are illustrative samples for educational purposes. In a live deployment, integrate with NewsAPI, Economic Times RSS feeds, or Moneycontrol API for real news data.
+  </div>
+</div>
+<footer>
+  <div><span class="footer-brand">ASPP Pro</span> · Market News</div>
+  <div style="font-size:0.72rem;color:var(--text3)">For educational purposes only.</div>
+</footer>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function filterNews(tag, el){
+  document.querySelectorAll('#newsPills .pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.news-card').forEach(card=>{
+    card.style.display = (tag==='all' || card.dataset.tag===tag) ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}

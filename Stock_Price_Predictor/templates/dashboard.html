@@ -1,0 +1,136 @@
+<!-- DASHBOARD -->
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block body %}
+<div class="page-wrap fade-in">
+<div class="container" style="padding-top:28px">
+  <div style="margin-bottom:24px">
+    <div class="page-label">Analytics</div>
+    <h1 class="page-title">Market Dashboard</h1>
+    <p class="page-sub">Real-time overview of all {{ total }} stocks across {{ sectors|length }} sectors</p>
+  </div>
+
+  <!-- INDEX STATS -->
+  <div class="stat-grid" style="margin-bottom:24px" id="idxTiles"></div>
+
+  <!-- CHARTS ROW 1 -->
+  <div class="grid-2" style="margin-bottom:18px">
+    <div class="chart-wrap">
+      <div class="chart-title">Market Breadth — Gainers vs Losers vs Unchanged</div>
+      <div id="breadthChart" style="height:260px"></div>
+    </div>
+    <div class="chart-wrap">
+      <div class="chart-title">Sector Performance Heatmap (%)</div>
+      <div id="sectorChart" style="height:260px"></div>
+    </div>
+  </div>
+
+  <!-- CHARTS ROW 2 -->
+  <div class="grid-2" style="margin-bottom:18px">
+    <div class="chart-wrap">
+      <div class="chart-title">Top 10 by Volume</div>
+      <div id="volChart" style="height:260px"></div>
+    </div>
+    <div class="chart-wrap">
+      <div class="chart-title">Top 10 Gainers & Losers (%)</div>
+      <div id="moversChart" style="height:260px"></div>
+    </div>
+  </div>
+
+  <!-- PER-INDEX TABLE OVERVIEW -->
+  {% for idx, data in sectors.items() %}
+  {% endfor %}
+  <div class="grid-3" style="margin-bottom:28px">
+    {% for sector, data in sectors.items() %}
+    <div class="card card-sm">
+      <div style="font-size:0.7rem;color:var(--text2);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px">{{ sector }}</div>
+      <div style="display:flex;gap:14px;font-size:0.8rem">
+        <span style="color:var(--green)">▲ {{ data.gainers }}</span>
+        <span style="color:var(--red)">▼ {{ data.losers }}</span>
+        <span style="color:var(--text2)">Total {{ data.count }}</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- LIVE TABLE (top 20) -->
+  <div class="sec-title" style="margin-bottom:12px">Live Stock Prices</div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>Symbol</th><th>Name</th><th>Sector</th><th>Price (₹)</th>
+        <th>Change</th><th>% Change</th><th>Volume</th><th>Action</th>
+      </tr></thead>
+      <tbody>
+        {% for q in quotes[:20] %}
+        <tr>
+          <td><a href="/stock/{{ q.symbol }}" style="font-weight:700;color:var(--gold)">{{ q.symbol.replace('.NS','') }}</a></td>
+          <td class="td-name">{{ q.name[:20] }}</td>
+          <td><span class="tag tag-it" style="font-size:0.62rem">{{ q.sector[:10] }}</span></td>
+          <td class="td-mono" style="font-weight:600">₹{{ fmtINR(q.price) }}</td>
+          <td class="td-mono {{ 'up' if q.change >= 0 else 'dn' }}">{{ '+' if q.change >= 0 else '' }}{{ q.change }}</td>
+          <td><span class="badge {{ 'badge-up' if q.pct_change >= 0 else 'badge-dn' }}">{{ '+' if q.pct_change >= 0 else '' }}{{ q.pct_change }}%</span></td>
+          <td class="td-mono">{{ fmtVol(q.volume) }}</td>
+          <td><a href="/predict?symbol={{ q.symbol }}" class="btn btn-blue btn-sm">Predict</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div style="text-align:center;margin-top:14px"><a href="/stocks" class="btn btn-ghost">View All {{ total }} Stocks →</a></div>
+</div>
+<footer><div><span class="footer-brand">ASPP Pro</span> · Dashboard</div></footer>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const QUOTES={{ quotes | tojson }};
+// Index tiles
+fetch('/api/indices').then(r=>r.json()).then(data=>{
+  const el=document.getElementById('idxTiles');
+  el.innerHTML=Object.entries(data).map(([k,v])=>{
+    const u=v.change>=0;
+    return `<div class="stat-tile ${u?'green':'red'}">
+      <div class="st-label">${k}</div>
+      <div class="st-value" style="font-size:1.2rem;color:${u?'var(--green)':'var(--red)'}">${v.value.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+      <div class="st-sub" style="color:${u?'var(--green)':'var(--red)'}">${u?'+':''}${v.change}%</div>
+    </div>`;
+  }).join('');
+});
+
+// Breadth
+const gainers=QUOTES.filter(q=>q.pct_change>0).length, losers=QUOTES.filter(q=>q.pct_change<0).length, unch=QUOTES.length-gainers-losers;
+Plotly.newPlot('breadthChart',[{type:'pie',labels:['Gainers','Losers','Unchanged'],values:[gainers,losers,unch],
+  marker:{colors:['#22c55e','#ef4444','#475569']},hole:0.6,
+  textinfo:'label+percent',textfont:{color:'#f1f5f9',size:11},
+  hovertemplate:'<b>%{label}</b><br>Count: %{value}<br>%{percent}<extra></extra>'
+}],{...PL_LAYOUT,showlegend:false,annotations:[{text:`${QUOTES.length}<br>Stocks`,x:0.5,y:0.5,font:{size:14,color:'#f1f5f9'},showarrow:false}]},PL_CONFIG);
+
+// Sector perf
+fetch('/api/sector_perf').then(r=>r.json()).then(data=>{
+  const secs=Object.keys(data), vals=Object.values(data);
+  const colors=vals.map(v=>v>=0?'rgba(34,197,94,0.75)':'rgba(239,68,68,0.75)');
+  Plotly.newPlot('sectorChart',[{type:'bar',x:secs,y:vals,marker:{color:colors},
+    text:vals.map(v=>(v>=0?'+':'')+v.toFixed(2)+'%'),textposition:'outside',
+    textfont:{color:vals.map(v=>v>=0?'#22c55e':'#ef4444'),size:9},
+  }],{...PL_LAYOUT,xaxis:{...PL_LAYOUT.xaxis,tickangle:-35}},PL_CONFIG);
+});
+
+// Volume
+const top10v=[...QUOTES].sort((a,b)=>b.volume-a.volume).slice(0,10);
+Plotly.newPlot('volChart',[{type:'bar',x:top10v.map(q=>q.symbol.replace('.NS','')),y:top10v.map(q=>q.volume/1e6),
+  marker:{color:'rgba(59,130,246,0.7)',line:{color:'#3b82f6',width:1}},
+  hovertemplate:'<b>%{x}</b><br>%{y:.2f}M shares<extra></extra>'
+}],{...PL_LAYOUT,yaxis:{...PL_LAYOUT.yaxis,title:{text:'Volume (M)',font:{size:11,color:'#64748b'}}}},PL_CONFIG);
+
+// Movers
+const top5g=[...QUOTES].sort((a,b)=>b.pct_change-a.pct_change).slice(0,5);
+const top5l=[...QUOTES].sort((a,b)=>a.pct_change-b.pct_change).slice(0,5);
+const movers=[...top5g,...top5l.reverse()];
+Plotly.newPlot('moversChart',[{type:'bar',x:movers.map(q=>q.symbol.replace('.NS','')),y:movers.map(q=>q.pct_change),
+  marker:{color:movers.map(q=>q.pct_change>=0?'rgba(34,197,94,0.75)':'rgba(239,68,68,0.75)')},
+  text:movers.map(q=>(q.pct_change>=0?'+':'')+q.pct_change+'%'),textposition:'outside',
+  textfont:{color:movers.map(q=>q.pct_change>=0?'#22c55e':'#ef4444'),size:9},
+}],{...PL_LAYOUT},PL_CONFIG);
+</script>
+{% endblock %}

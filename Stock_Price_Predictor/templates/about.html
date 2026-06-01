@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}About{% endblock %}
+{% block body %}
+<div class="page-wrap fade-in">
+<div class="container" style="padding-top:32px;max-width:1000px">
+
+  <div style="margin-bottom:36px">
+    <div class="page-label">Project Information</div>
+    <h1 class="page-title">About ASPP Pro</h1>
+    <p class="page-sub">Automatic Stock Price Predictor · Final Year Academic Project · 2026</p>
+  </div>
+
+  <!-- HERO CARD -->
+  <div class="card card-lg" style="margin-bottom:24px;border-top:3px solid var(--gold);background:linear-gradient(135deg,var(--card) 0%,var(--card2) 100%)">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:start">
+      <div>
+        <h2 style="font-family:var(--font-d);font-size:1.6rem;font-weight:800;color:var(--gold);letter-spacing:-0.5px;margin-bottom:14px">Automatic Stock Price Predictor</h2>
+        <p style="font-size:0.88rem;color:var(--text2);line-height:1.8;margin-bottom:12px">
+          A full-stack web application built with Python (Flask) that fetches live NSE stock data, applies machine learning algorithms to predict future stock prices, and presents results through professional-grade interactive Plotly charts including candlestick visualisations.
+        </p>
+        <p style="font-size:0.88rem;color:var(--text2);line-height:1.8">
+          The project demonstrates end-to-end data engineering, feature engineering with technical indicators (RSI, MACD, Bollinger Bands, SMA, EMA), supervised ML prediction, and production-quality web development.
+        </p>
+      </div>
+      <div>
+        <div class="sec-label" style="margin-bottom:12px">Platform Statistics</div>
+        {% for label, val, color in [
+          ('Live Stocks Covered', total_stocks ~ ' NSE Equities', 'var(--gold)'),
+          ('Indices Tracked', '3 (Nifty 50, Bank, Next 50)', 'var(--blue2)'),
+          ('Sectors Covered', sectors|length ~ ' Market Sectors', 'var(--cyan)'),
+          ('Prediction Horizon', '10 Trading Days Forward', 'var(--green)'),
+          ('Technical Indicators', 'RSI, MACD, SMA, EMA, BB', 'var(--purple)'),
+          ('Chart Types', '5 (Candlestick, Line, Bar, Scatter, Pie)', 'var(--gold)'),
+        ] %}
+        <div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--bg3);border-radius:6px;margin-bottom:6px;font-size:0.8rem">
+          <span style="color:var(--text2)">{{ label }}</span>
+          <span style="font-family:var(--font-m);font-size:0.75rem;color:{{ color }}">{{ val }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- TECHNOLOGY STACK -->
+  <div style="margin-bottom:24px">
+    <div class="sec-label" style="margin-bottom:14px">Technology Stack</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px">
+      {% for icon, name, desc, color in [
+        ('🐍','Python 3.10+','Core Language','var(--blue2)'),
+        ('⚗️','Flask','Web Framework','var(--gold)'),
+        ('📈','yfinance','Live NSE Data','var(--green)'),
+        ('🐼','pandas','Data Processing','var(--cyan)'),
+        ('🔢','NumPy','Numerical Computing','var(--purple)'),
+        ('🧠','scikit-learn','ML Predictions','var(--red2)'),
+        ('📊','Plotly','Interactive Charts','var(--blue2)'),
+        ('🎨','CSS3 + JS','Dark UI Theme','var(--gold)'),
+        ('📐','Jinja2','HTML Templating','var(--green)'),
+        ('🔒','Flask Sessions','State Management','var(--text2)'),
+      ] %}
+      <div class="card card-sm card-hover" style="text-align:center;border-top:2px solid {{ color }}">
+        <div style="font-size:1.5rem;margin-bottom:8px">{{ icon }}</div>
+        <div style="font-weight:700;font-size:0.82rem;margin-bottom:3px">{{ name }}</div>
+        <div style="font-size:0.68rem;color:var(--text2)">{{ desc }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ML MODEL EXPLANATION -->
+  <div class="card" style="margin-bottom:24px">
+    <div class="card-title">Machine Learning Model — How It Works</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;font-size:0.86rem;color:var(--text2);line-height:1.8">
+      <div>
+        <div style="color:var(--gold);font-weight:600;margin-bottom:8px;font-size:0.88rem">1. Feature Engineering</div>
+        The model extracts 15+ technical features from OHLCV data: Simple Moving Averages (SMA-5, SMA-10, SMA-20), Exponential Moving Averages (EMA-12, EMA-26), RSI (14-day), MACD and Signal line, Bollinger Band width, 1-day and 5-day price returns, and 10-day rolling volatility.
+
+        <div style="color:var(--blue2);font-weight:600;margin-bottom:8px;font-size:0.88rem;margin-top:16px">2. Model Architecture</div>
+        scikit-learn's LinearRegression with MinMaxScaler normalisation. Features and target are independently scaled to [0,1] to prevent numerical dominance by high-magnitude features like price and volume.
+      </div>
+      <div>
+        <div style="color:var(--green);font-weight:600;margin-bottom:8px;font-size:0.88rem">3. Walk-Forward Prediction</div>
+        For future days, the model uses a walk-forward approach: each predicted price is fed back as input to compute the next day's technical indicators, which are then used to predict the next price. This chains predictions across 10 days.
+
+        <div style="color:var(--purple);font-weight:600;margin-bottom:8px;font-size:0.88rem;margin-top:16px">4. Signal Generation</div>
+        Buy/Sell signals are generated by comparing each predicted price against the current LTP: &gt;+2% = STRONG BUY, +0.5% to +2% = BUY, −0.5% to +0.5% = HOLD, −2% to −0.5% = SELL, &lt;−2% = STRONG SELL.
+      </div>
+    </div>
+  </div>
+
+  <!-- WEBSITE STRUCTURE -->
+  <div class="card" style="margin-bottom:24px">
+    <div class="card-title">Website Structure — 12 Pages</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      {% for num, page, desc in [
+        ('01','/  Home','Hero section, live index cards, top gainers/losers, featured stocks'),
+        ('02','/dashboard  Dashboard','Analytics overview, breadth charts, sector heatmap, top movers'),
+        ('03','/stocks  Live Stocks','All stocks live with real-time prices, filters, and sort'),
+        ('04','/stock/<sym>  Stock Detail','Candlestick + OHLC + RSI + MACD + Bollinger Bands per stock'),
+        ('05','/predict  Prediction','10-day ML forecast with confidence bands and signal table'),
+        ('06','/compare  Compare','Side-by-side normalised performance of up to 4 stocks'),
+        ('07','/market  Market Trends','Sector heatmaps and index performance analysis'),
+        ('08','/portfolio  Portfolio','Holdings tracker with P&L, allocation chart, add/remove'),
+        ('09','/watchlist  Watchlist','Favourite stocks with live prices and mini comparison chart'),
+        ('10','/news  News','Market news with sentiment classification and tag filters'),
+        ('11','/about  About','Project overview, tech stack, ML model explanation'),
+        ('12','/contact  Contact','Feedback form with validation'),
+      ] %}
+      <div style="display:flex;gap:12px;padding:10px;background:var(--bg3);border-radius:7px;font-size:0.78rem">
+        <span style="font-family:var(--font-m);color:var(--gold);font-size:0.68rem;flex-shrink:0;padding-top:1px">{{ num }}</span>
+        <div><div style="font-weight:600;color:var(--text);margin-bottom:3px">{{ page }}</div><div style="color:var(--text2)">{{ desc }}</div></div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- FEATURES -->
+  <div class="card" style="margin-bottom:24px">
+    <div class="card-title">All Features</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      {% for f in [
+        'Live NSE stock prices (40+ stocks across 3 indices)',
+        'Candlestick charts with red/green candles (Plotly)',
+        '10-day price prediction with confidence bands',
+        'Buy/Sell/Hold signal generation per day',
+        'RSI (14), MACD, Bollinger Bands overlays',
+        'SMA-5, SMA-10, SMA-20, EMA-12, EMA-26 indicators',
+        'Volume bar charts with up/down colouring',
+        'Compare up to 4 stocks on normalised performance',
+        'Portfolio tracker with P&L and allocation pie chart',
+        'Watchlist with 3-month performance chart',
+        'Market heatmap per sector',
+        'Sector breadth and performance analysis',
+        'Global search with real-time dropdown',
+        'Live scrolling ticker with price updates',
+        'Auto-refresh every 30 seconds',
+        '52-week high/low range indicator',
+        'IST live clock in navbar',
+        'Responsive design for mobile and desktop',
+        'Dark professional trading-app theme',
+        'Session-based watchlist and portfolio persistence',
+      ] %}
+      <div style="display:flex;gap:10px;font-size:0.8rem;color:var(--text2)">
+        <span style="color:var(--green);flex-shrink:0;margin-top:1px">✓</span>{{ f }}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="disclaimer">
+    <strong>🎓 Academic Project:</strong> This project was built as a Final Year Computer Science / Data Science academic project. All stock data, predictions, and signals are for educational and research purposes only. Not financial advice.
+  </div>
+</div>
+<footer>
+  <div><span class="footer-brand">ASPP Pro</span> · About · Final Year Project · 2026</div>
+  <div style="font-size:0.72rem;color:var(--text3)">For educational purposes only.</div>
+</footer>
+</div>
+{% endblock %}

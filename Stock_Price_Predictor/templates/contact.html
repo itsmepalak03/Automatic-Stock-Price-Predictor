@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Contact{% endblock %}
+{% block body %}
+<div class="page-wrap fade-in">
+<div class="container" style="padding-top:32px;max-width:900px">
+
+  <div style="margin-bottom:32px">
+    <div class="page-label">Get In Touch</div>
+    <h1 class="page-title">Contact & Feedback</h1>
+    <p class="page-sub">Share your feedback, report issues, or ask questions about the project</p>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:start">
+
+    <!-- FORM -->
+    <div class="card card-lg">
+      <div class="card-title">Send a Message</div>
+
+      <div id="formSuccess" style="display:none;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.3);border-radius:8px;padding:14px 18px;margin-bottom:18px;color:var(--green);font-size:0.85rem">
+        ✅ Thank you! Your message has been received.
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+        <div>
+          <label class="form-label">First Name *</label>
+          <input class="form-input" id="fname" placeholder="Arjun">
+        </div>
+        <div>
+          <label class="form-label">Last Name</label>
+          <input class="form-input" id="lname" placeholder="Sharma">
+        </div>
+      </div>
+      <div style="margin-bottom:14px">
+        <label class="form-label">Email Address *</label>
+        <input class="form-input" id="email" type="email" placeholder="arjun@example.com">
+      </div>
+      <div style="margin-bottom:14px">
+        <label class="form-label">Subject</label>
+        <select class="form-select" id="subject">
+          <option>General Feedback</option>
+          <option>Bug Report</option>
+          <option>Feature Request</option>
+          <option>Academic Inquiry</option>
+          <option>Data Issue</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div style="margin-bottom:18px">
+        <label class="form-label">Message *</label>
+        <textarea class="form-textarea" id="message" rows="5" placeholder="Your message here..."></textarea>
+      </div>
+      <button class="btn btn-gold" style="width:100%;justify-content:center;padding:12px" onclick="submitForm()">
+        Send Message →
+      </button>
+    </div>
+
+    <!-- INFO -->
+    <div>
+      <div class="card" style="margin-bottom:18px">
+        <div class="card-title">Project Information</div>
+        {% for label, val in [
+          ('Project Name','Automatic Stock Price Predictor (ASPP Pro)'),
+          ('Version','1.0 — Final Year Project'),
+          ('Built With','Python, Flask, scikit-learn, Plotly'),
+          ('Data Source','yfinance / NSE India'),
+          ('Purpose','Academic Research & Education'),
+        ] %}
+        <div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:0.82rem">
+          <span style="color:var(--text2);min-width:110px">{{ label }}</span>
+          <span style="color:var(--text);font-weight:500">{{ val }}</span>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="card" style="margin-bottom:18px">
+        <div class="card-title">Quick Links</div>
+        {% for icon, label, url in [
+          ('📊','View Dashboard','/dashboard'),
+          ('📈','Start Predicting','/predict'),
+          ('🕯️','Browse Stocks','/stocks'),
+          ('📰','Market News','/news'),
+          ('💼','Portfolio','/portfolio'),
+          ('ℹ️','About the Project','/about'),
+        ] %}
+        <a href="{{ url }}" style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg3);border-radius:7px;text-decoration:none;color:var(--text);font-size:0.82rem;margin-bottom:6px;transition:background 0.15s" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='var(--bg3)'">
+          <span>{{ icon }}</span>{{ label }}
+        </a>
+        {% endfor %}
+      </div>
+
+      <div class="disclaimer">
+        <strong>⚠ Academic Use Only:</strong> This is a student project built for educational purposes. Predictions are not financial advice.
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FAQ -->
+  <div style="margin-top:32px">
+    <div class="sec-label" style="margin-bottom:14px">Frequently Asked Questions</div>
+    <div id="faqContainer">
+      {% for q, a in [
+        ('How accurate are the stock predictions?','The model uses Linear Regression with technical indicators on historical price data. It captures trend direction reasonably well but cannot predict sudden market events, news shocks, or earnings surprises. Treat predictions as directional indicators, not precise price targets.'),
+        ('Does this use real live stock data?','The architecture is fully yfinance-ready. When running with internet access and yfinance installed, it fetches real NSE data. In the current demo, realistic simulated data is used that mirrors actual NSE price behaviour.'),
+        ('Can I use this for actual trading?','No. This is strictly for educational and academic purposes. Do not make investment decisions based on these predictions. Always consult a SEBI-registered financial advisor.'),
+        ('How do I add this to my portfolio or watchlist?','Go to Live Stocks, click on any stock, then use the "Add to Watchlist" button. For portfolio, go to the Portfolio page and use the "Add Holding" form.'),
+        ('How do I enable live yfinance data?','Install yfinance with pip install yfinance, then in utils/stock_data.py uncomment the yfinance blocks in get_stock_history() and get_live_quote(). Full instructions in the README.'),
+      ] %}
+      <div style="border:1px solid var(--border);border-radius:9px;margin-bottom:10px;overflow:hidden">
+        <div style="padding:14px 18px;cursor:pointer;font-weight:600;font-size:0.88rem;display:flex;justify-content:space-between;background:var(--card);user-select:none" onclick="toggleFaq(this)">
+          {{ q }}<span style="font-size:1.1rem;color:var(--gold);transition:transform 0.25s">+</span>
+        </div>
+        <div style="max-height:0;overflow:hidden;transition:max-height 0.3s ease">
+          <div style="padding:14px 18px;background:var(--bg3);color:var(--text2);font-size:0.84rem;line-height:1.7">{{ a }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+<footer>
+  <div><span class="footer-brand">ASPP Pro</span> · Contact</div>
+  <div style="font-size:0.72rem;color:var(--text3)">For educational purposes only.</div>
+</footer>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function submitForm(){
+  const fname=document.getElementById('fname').value.trim();
+  const email=document.getElementById('email').value.trim();
+  const msg=document.getElementById('message').value.trim();
+  if(!fname){showToast('Please enter your name','err');return;}
+  if(!email||!email.includes('@')){showToast('Please enter a valid email','err');return;}
+  if(!msg){showToast('Please enter a message','err');return;}
+  document.getElementById('formSuccess').style.display='block';
+  document.getElementById('fname').value='';
+  document.getElementById('email').value='';
+  document.getElementById('message').value='';
+  showToast('Message sent successfully! ✓','ok');
+}
+function toggleFaq(el){
+  const body=el.nextElementSibling;
+  const icon=el.querySelector('span:last-child');
+  const open=body.style.maxHeight&&body.style.maxHeight!=='0px';
+  body.style.maxHeight=open?'0':body.scrollHeight+'px';
+  icon.textContent=open?'+':'−';
+  icon.style.transform=open?'':'rotate(45deg)';
+}
+</script>
+{% endblock %}

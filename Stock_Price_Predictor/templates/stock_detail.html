@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% block title %}{{ symbol.replace('.NS','') }} — Stock Detail{% endblock %}
+{% block body %}
+<div class="page-wrap fade-in">
+<div class="container" style="padding-top:28px">
+
+  <!-- BACK + HEADER -->
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+    <a href="/stocks" class="btn btn-ghost btn-sm">← Back</a>
+    <span style="color:var(--text3)">›</span>
+    <span style="font-size:0.82rem;color:var(--text2)">{{ info.index }}</span>
+    <span style="color:var(--text3)">›</span>
+    <span style="font-size:0.82rem;color:var(--gold)">{{ symbol.replace('.NS','') }}</span>
+  </div>
+
+  <!-- STOCK HEADER CARD -->
+  <div class="card" style="margin-bottom:20px;border-top:3px solid {{ 'var(--green)' if quote.pct_change >= 0 else 'var(--red)' }}">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:20px">
+      <div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+          <h1 style="font-family:var(--font-d);font-size:2rem;font-weight:800;letter-spacing:-1px">{{ symbol.replace('.NS','') }}</h1>
+          <span class="badge badge-gold">{{ info.index }}</span>
+          <span class="tag tag-{{ info.sector.lower().replace(' ','') if info.sector.lower() in ['it','banking','pharma','energy','fmcg','auto'] else 'it' }}">{{ info.sector }}</span>
+        </div>
+        <div style="font-size:0.9rem;color:var(--text2);margin-bottom:4px">{{ info.name }}</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="live-dot"></span>
+          <span style="font-size:0.72rem;color:var(--text3)">Live Price</span>
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-family:var(--font-m);font-size:2.8rem;font-weight:600;color:{{ 'var(--green)' if quote.pct_change >= 0 else 'var(--red)' }};line-height:1">₹{{ fmtINR(quote.price) }}</div>
+        <div style="margin-top:6px;display:flex;gap:10px;justify-content:flex-end;align-items:center">
+          <span class="badge {{ 'badge-up' if quote.pct_change >= 0 else 'badge-dn' }}" style="font-size:0.82rem;padding:5px 12px">
+            {{ '▲' if quote.pct_change >= 0 else '▼' }} {{ '+' if quote.pct_change >= 0 else '' }}{{ quote.change }} ({{ quote.pct_change }}%)
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KEY METRICS -->
+  <div class="grid-4" style="margin-bottom:20px">
+    {% for label, val in [('Open','₹'+fmtINR(quote.open)),('High','₹'+fmtINR(quote.high)),('Low','₹'+fmtINR(quote.low)),('Prev Close','₹'+fmtINR(quote.prev_close)),('Volume',fmtVol(quote.volume)),('52W High','₹'+fmtINR(quote['52w_high'])),('52W Low','₹'+fmtINR(quote['52w_low'])),('Sector',info.sector)] %}
+    <div class="card card-sm">
+      <div style="font-size:0.66rem;text-transform:uppercase;letter-spacing:0.9px;color:var(--text2);margin-bottom:6px">{{ label }}</div>
+      <div style="font-family:var(--font-m);font-size:0.92rem;font-weight:600">{{ val }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- 52W RANGE -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-title">52-Week Price Range</div>
+    {% set pct52 = ((quote.price - quote['52w_low']) / (quote['52w_high'] - quote['52w_low']) * 100) if quote['52w_high'] != quote['52w_low'] else 50 %}
+    <div class="range-bar">
+      <div class="range-fill" style="width:100%"></div>
+      <div class="range-dot" style="left:{{ pct52 }}%"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-family:var(--font-m);font-size:0.72rem;color:var(--text2);margin-top:6px">
+      <span style="color:var(--red)">₹{{ fmtINR(quote['52w_low']) }}</span>
+      <span style="color:var(--gold)">₹{{ fmtINR(quote.price) }} · {{ "%.1f"|format(pct52) }}% of range</span>
+      <span style="color:var(--green)">₹{{ fmtINR(quote['52w_high']) }}</span>
+    </div>
+  </div>
+
+  <!-- CANDLESTICK CHART -->
+  <div class="chart-wrap" style="margin-bottom:18px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <div class="chart-title" style="margin-bottom:0">Candlestick Chart — OHLC + Volume</div>
+      <div class="pill-row" id="periodPills">
+        <button class="pill active" onclick="loadCandles('3mo',this)">3M</button>
+        <button class="pill" onclick="loadCandles('6mo',this)">6M</button>
+        <button class="pill" onclick="loadCandles('1y',this)">1Y</button>
+      </div>
+    </div>
+    <div id="candleChart" style="height:420px"></div>
+    <div style="margin-top:12px">
+      <div class="chart-title">Volume</div>
+      <div id="volChart" style="height:140px"></div>
+    </div>
+  </div>
+
+  <!-- LINE + INDICATORS -->
+  <div class="grid-2" style="margin-bottom:18px">
+    <div class="chart-wrap">
+      <div class="chart-title">Closing Price + SMA-5 + SMA-20 + Bollinger Bands</div>
+      <div id="lineChart" style="height:280px"></div>
+    </div>
+    <div class="chart-wrap">
+      <div class="chart-title">RSI (14-day Relative Strength Index)</div>
+      <div id="rsiChart" style="height:280px"></div>
+    </div>
+  </div>
+
+  <!-- MACD -->
+  <div class="chart-wrap" style="margin-bottom:18px">
+    <div class="chart-title">MACD (Moving Average Convergence Divergence)</div>
+    <div id="macdChart" style="height:220px"></div>
+  </div>
+
+  <!-- ACTION BUTTONS -->
+  <div style="display:flex;gap:12px;margin-bottom:28px;flex-wrap:wrap">
+    <a href="/predict?symbol={{ symbol }}" class="btn btn-gold">⚡ Predict Next 10 Days</a>
+    <button class="btn btn-blue" onclick="toggleWatchlist('{{ symbol }}')">
+      {{ '★ Remove from Watchlist' if in_watchlist else '☆ Add to Watchlist' }}
+    </button>
+    <a href="/compare?s={{ symbol }}" class="btn btn-ghost">Compare →</a>
+  </div>
+
+  <!-- RELATED STOCKS -->
+  {% if related %}
+  <div class="sec-label" style="margin-bottom:12px">Related Stocks — {{ info.sector }} Sector</div>
+  <div class="grid-4" style="margin-bottom:36px">
+    {% for q in related %}
+    <a href="/stock/{{ q.symbol }}" class="card card-hover" style="text-decoration:none">
+      <div style="font-weight:700;font-size:0.88rem;margin-bottom:4px">{{ q.symbol.replace('.NS','') }}</div>
+      <div style="font-size:0.7rem;color:var(--text2);margin-bottom:8px">{{ q.name[:24] }}</div>
+      <div style="font-family:var(--font-m);font-size:1rem;font-weight:600">₹{{ fmtINR(q.price) }}</div>
+      <span class="badge {{ 'badge-up' if q.pct_change >= 0 else 'badge-dn' }}" style="margin-top:6px">{{ '+' if q.pct_change >= 0 else '' }}{{ q.pct_change }}%</span>
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+</div>
+<footer>
+  <div><span class="footer-brand">ASPP Pro</span> · {{ symbol }}</div>
+  <div style="font-size:0.72rem;color:var(--text3)">For educational purposes only.</div>
+</footer>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const SYM      = "{{ symbol }}";
+const CANDLES  = {{ candles | safe }};
+const VOLS     = {{ vols | safe }};
+const LDATES   = {{ line_dates | safe }};
+const LCLOSE   = {{ line_close | safe }};
+const SMA20    = {{ sma20 | safe }};
+const SMA5     = {{ sma5 | safe }};
+const BB_UP    = {{ bb_upper | safe }};
+const BB_DN    = {{ bb_lower | safe }};
+const RSI_D    = {{ rsi_data | safe }};
+const MACD_D   = {{ macd_data | safe }};
+const MACD_S   = {{ macd_signal | safe }};
+
+function drawCandles(candles, vols){
+  const dates=candles.map(d=>d.x), open=candles.map(d=>d.open),
+        high=candles.map(d=>d.high), low=candles.map(d=>d.low), close=candles.map(d=>d.close);
+  Plotly.newPlot('candleChart',[{
+    type:'candlestick', x:dates, open, high, low, close,
+    increasing:{line:{color:'#22c55e',width:1.5}, fillcolor:'#22c55e'},
+    decreasing:{line:{color:'#ef4444',width:1.5}, fillcolor:'#ef4444'},
+    name:'OHLC',
+    hovertemplate:'<b>%{x}</b><br>O: %{open}<br>H: %{high}<br>L: %{low}<br>C: %{close}<extra></extra>'
+  }],{...PL_LAYOUT,xaxis:{...PL_LAYOUT.xaxis,rangeslider:{visible:false}},
+    yaxis:{...PL_LAYOUT.yaxis,title:{text:'Price (₹)',font:{size:11,color:'#64748b'}}}},PL_CONFIG);
+
+  Plotly.newPlot('volChart',[{
+    type:'bar', x:vols.map(v=>v.x), y:vols.map(v=>v.y),
+    marker:{color:vols.map(v=>v.color)}, name:'Volume',
+    hovertemplate:'<b>%{x}</b><br>Vol: %{y:,.0f}<extra></extra>'
+  }],{...PL_LAYOUT,yaxis:{...PL_LAYOUT.yaxis,title:{text:'Volume',font:{size:11,color:'#64748b'}}}},PL_CONFIG);
+}
+drawCandles(CANDLES, VOLS);
+
+// Line + BBands
+Plotly.newPlot('lineChart',[
+  {x:LDATES,y:BB_UP,mode:'lines',name:'BB Upper',line:{color:'rgba(59,130,246,0.3)',width:1},fill:'tonexty',fillcolor:'rgba(59,130,246,0.05)'},
+  {x:LDATES,y:LCLOSE,mode:'lines',name:'Close',line:{color:'#f0b429',width:2}},
+  {x:LDATES,y:BB_DN,mode:'lines',name:'BB Lower',line:{color:'rgba(59,130,246,0.3)',width:1}},
+  {x:LDATES,y:SMA20,mode:'lines',name:'SMA-20',line:{color:'#a855f7',width:1.5,dash:'dot'}},
+  {x:LDATES,y:SMA5, mode:'lines',name:'SMA-5', line:{color:'#06b6d4',width:1.5,dash:'dot'}},
+],{...PL_LAYOUT},PL_CONFIG);
+
+// RSI
+Plotly.newPlot('rsiChart',[
+  {x:LDATES,y:RSI_D,mode:'lines',name:'RSI(14)',line:{color:'#a855f7',width:2},
+   fill:'tozeroy',fillcolor:'rgba(168,85,247,0.08)'},
+  {x:LDATES,y:Array(LDATES.length).fill(70),mode:'lines',name:'Overbought',line:{color:'rgba(239,68,68,0.5)',width:1,dash:'dot'}},
+  {x:LDATES,y:Array(LDATES.length).fill(30),mode:'lines',name:'Oversold',line:{color:'rgba(34,197,94,0.5)',width:1,dash:'dot'}},
+],{...PL_LAYOUT,yaxis:{...PL_LAYOUT.yaxis,range:[0,100],title:{text:'RSI',font:{size:11,color:'#64748b'}}}},PL_CONFIG);
+
+// MACD
+const hist=MACD_D.map((v,i)=>v!=null&&MACD_S[i]!=null?v-MACD_S[i]:null);
+Plotly.newPlot('macdChart',[
+  {x:LDATES,y:MACD_D,mode:'lines',name:'MACD',line:{color:'#3b82f6',width:2}},
+  {x:LDATES,y:MACD_S,mode:'lines',name:'Signal',line:{color:'#f0b429',width:1.5,dash:'dot'}},
+  {x:LDATES,y:hist,type:'bar',name:'Histogram',marker:{color:hist.map(v=>v!=null?(v>=0?'rgba(34,197,94,0.6)':'rgba(239,68,68,0.6)'):'gray')}},
+],{...PL_LAYOUT,yaxis:{...PL_LAYOUT.yaxis,zeroline:true,zerolinecolor:'#1f2d42',title:{text:'MACD',font:{size:11,color:'#64748b'}}}},PL_CONFIG);
+
+function loadCandles(period, el){
+  document.querySelectorAll('#periodPills .pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  fetch(`/api/history/${SYM}?period=${period}`).then(r=>r.json()).then(d=>drawCandles(d.candles,d.volume));
+}
+
+function toggleWatchlist(sym){
+  const inWl={{ 'true' if in_watchlist else 'false' }};
+  const url = inWl ? '/api/watchlist/remove' : '/api/watchlist/add';
+  fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbol:sym})})
+    .then(()=>{showToast(inWl?'Removed from watchlist':'Added to watchlist ⭐','ok');setTimeout(()=>location.reload(),800);});
+}
+</script>
+{% endblock %}

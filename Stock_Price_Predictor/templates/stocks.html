@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Live Stocks{% endblock %}
+{% block body %}
+<div class="page-wrap fade-in">
+<div class="container" style="padding-top:28px">
+  <div style="margin-bottom:22px;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px">
+    <div>
+      <div class="page-label">NSE Equities</div>
+      <h1 class="page-title">Live Stock Prices</h1>
+      <p class="page-sub"><span class="live-dot"></span>{{ quotes|length }} stocks · Updates every 30 seconds</p>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <select id="idxFilter" class="form-select" style="width:150px" onchange="applyFilters()">
+        <option value="">All Indices</option>
+        {% for idx in indices_list %}<option>{{ idx }}</option>{% endfor %}
+      </select>
+      <select id="secFilter" class="form-select" style="width:140px" onchange="applyFilters()">
+        <option value="">All Sectors</option>
+        {% for sec in sectors_list %}<option>{{ sec }}</option>{% endfor %}
+      </select>
+      <input id="symFilter" class="form-input" style="width:160px" placeholder="Filter symbol..." oninput="applyFilters()">
+    </div>
+  </div>
+
+  <div class="tbl-wrap">
+    <table id="stockTable">
+      <thead><tr>
+        <th onclick="sortTable('symbol')">Symbol ↕</th>
+        <th>Name</th>
+        <th onclick="sortTable('sector')">Sector ↕</th>
+        <th onclick="sortTable('index_name')">Index ↕</th>
+        <th onclick="sortTable('price')">Price ↕</th>
+        <th onclick="sortTable('change')">Change ↕</th>
+        <th onclick="sortTable('pct_change')">% Change ↕</th>
+        <th onclick="sortTable('volume')">Volume ↕</th>
+        <th onclick="sortTable('52w_high')">52W High ↕</th>
+        <th onclick="sortTable('52w_low')">52W Low ↕</th>
+        <th>Action</th>
+      </tr></thead>
+      <tbody id="stockTbody"></tbody>
+    </table>
+  </div>
+</div>
+<footer><div><span class="footer-brand">ASPP Pro</span> · Live Stocks</div></footer>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+let ALL_QUOTES={{ quotes | tojson }};
+let sortKey='pct_change', sortDir=-1;
+const fmtN=(n,d=2)=>n==null?'—':Number(n).toLocaleString('en-IN',{minimumFractionDigits:d,maximumFractionDigits:d});
+const fmtV=n=>{if(n==null)return'—';if(n>=1e7)return(n/1e7).toFixed(2)+'Cr';if(n>=1e5)return(n/1e5).toFixed(1)+'L';return n.toLocaleString('en-IN');};
+
+function sortTable(k){if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=-1;}renderTable();}
+
+function applyFilters(){
+  const idx=document.getElementById('idxFilter').value.toLowerCase();
+  const sec=document.getElementById('secFilter').value.toLowerCase();
+  const sym=document.getElementById('symFilter').value.toLowerCase();
+  renderTable({idx,sec,sym});
+}
+
+function renderTable(f={}){
+  let data=[...ALL_QUOTES];
+  if(f.idx)data=data.filter(q=>q.index_name&&q.index_name.toLowerCase().includes(f.idx));
+  if(f.sec)data=data.filter(q=>q.sector&&q.sector.toLowerCase().includes(f.sec));
+  if(f.sym)data=data.filter(q=>q.symbol&&q.symbol.toLowerCase().includes(f.sym));
+  data=data.sort((a,b)=>{const va=a[sortKey]??-Infinity,vb=b[sortKey]??-Infinity;return(va<vb?-1:1)*sortDir;});
+  document.getElementById('stockTbody').innerHTML=data.map(q=>`<tr>
+    <td><a href="/stock/${q.symbol}" style="font-weight:700;color:var(--gold)">${q.symbol.replace('.NS','')}</a></td>
+    <td class="td-name">${(q.name||'').slice(0,22)}</td>
+    <td style="font-size:0.72rem;color:var(--text2)">${q.sector||'—'}</td>
+    <td style="font-size:0.72rem;color:var(--text3)">${q.index_name||'—'}</td>
+    <td class="td-mono" style="font-weight:600">₹${fmtN(q.price)}</td>
+    <td class="td-mono ${(q.change||0)>=0?'up':'dn'}">${(q.change||0)>=0?'+':''}${fmtN(q.change)}</td>
+    <td><span class="badge ${(q.pct_change||0)>=0?'badge-up':'badge-dn'}">${(q.pct_change||0)>=0?'+':''}${fmtN(q.pct_change)}%</span></td>
+    <td class="td-mono">${fmtV(q.volume)}</td>
+    <td class="td-mono up">₹${fmtN(q['52w_high'])}</td>
+    <td class="td-mono dn">₹${fmtN(q['52w_low'])}</td>
+    <td style="display:flex;gap:5px">
+      <a href="/stock/${q.symbol}" class="btn btn-ghost btn-sm">Detail</a>
+      <a href="/predict?symbol=${q.symbol}" class="btn btn-blue btn-sm">Predict</a>
+    </td>
+  </tr>`).join('');
+}
+renderTable();
+// Auto-refresh every 30s
+setInterval(()=>{fetch('/api/quotes').then(r=>r.json()).then(d=>{ALL_QUOTES=d;applyFilters();});},30000);
+</script>
+{% endblock %}
