@@ -1,3 +1,11 @@
+"""
+ML Prediction Engine
+====================
+Uses scikit-learn Linear Regression with feature engineering.
+Architecture is LSTM-ready — swap model in train_model() to use LSTM
+when tensorflow/keras is available.
+"""
+
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LinearRegression
